@@ -313,7 +313,6 @@ void updateCV()
 	{
 		cap.set(CV_CAP_PROP_POS_FRAMES, 10);
 	}
-
 	imshow("video", frame);
 }
 
@@ -322,7 +321,7 @@ void mydisplay()
 {
 	// OpenCV Processing
 
-	updateCV();
+//	updateCV();
 
 	// End of OpenCV Processing
 
@@ -492,12 +491,12 @@ void casamentoFLANN(Mat desc1, Mat desc2, vector<DMatch> *m)
 	printf("-- Max dist : %f \n", distMax);
 	printf("-- Min dist : %f \n", distMin);
 
-	//desenhar good matches
+	//retornar good matches
 	std::vector< DMatch > good_matches;
 
 	for (int i = 0; i < desc1.rows; i++)
 	{
-		if (matches[i].distance <= max(2 * distMin, 0.02))
+		if (matches[i].distance <= max(3 * distMin, 0.02))
 		{
 			good_matches.push_back(matches[i]);
 		}
@@ -506,52 +505,89 @@ void casamentoFLANN(Mat desc1, Mat desc2, vector<DMatch> *m)
 }
 
 void CVergonhice(){
+		int fcount = 0;
 
-	int fcount = 0;
+		Mat padrao, modelo, kPadrao, kModelo, kCasada, exModelo, exPadrao;
+		Mat padraoCinza, modeloCinza, padraoBlur, modeloBlur;
+		Mat padraoSobel, modeloSobel;
+		std::vector<KeyPoint> kpPadrao, kpModelo;
+		vector<DMatch> pontosCasados;
 
-	Mat padrao, modelo, kPadrao, kModelo, kCasada, exModelo, exPadrao;
-	Mat padraoCinza, modeloCinza, padraoBlur, modeloBlur;
-	Mat padraoSobel, modeloSobel;
-	std::vector<KeyPoint> kpPadrao, kpModelo;
-	vector<DMatch> pontosCasados;
+		while (1){
+			modelo = imread("Resources\\InputData\\livro.jpg");
+			cap.read(padrao);
 
-	modelo = imread("Resources\\InputData\\obj.jpg");
-	padrao = imread("Resources\\InputData\\objs.jpg");
+			/// Filtro gaussiano
+			GaussianBlur(padrao, padrao, Size(3, 3), 0, 0, BORDER_DEFAULT);
+			GaussianBlur(modelo, modelo, Size(3, 3), 0, 0, BORDER_DEFAULT);
 
-	/// Filtro gaussiano
-	GaussianBlur(padrao, padrao, Size(3, 3), 0, 0, BORDER_DEFAULT);
-	GaussianBlur(modelo, modelo, Size(3, 3), 0, 0, BORDER_DEFAULT);
+			/// RGB -> Escala de cinza
+			cvtColor(padrao, padraoCinza, CV_RGB2GRAY);
+			cvtColor(modelo, modeloCinza, CV_RGB2GRAY);
 
-	/// RGB -> Escala de cinza
-	cvtColor(padrao, padraoCinza, CV_RGB2GRAY);
-	cvtColor(modelo, modeloCinza, CV_RGB2GRAY);
+			/// Filtro de Sobel
+			//padraoSobel = cinzasSobel(padraoCinza,padraoSobel);
+			//modeloSobel = cinzasSobel(modeloCinza,modeloSobel);
 
-	/// Filtro de Sobel
-	//padraoSobel = cinzasSobel(padraoCinza,padraoSobel);
-	//modeloSobel = cinzasSobel(modeloCinza,modeloSobel);
+			/// Calculo de pontos chave
+			imgPontosChaves(modeloCinza, &kpModelo, &kModelo);///Caso usar o filtro de Sobel, usar 'modeloSobel';
+			imgPontosChaves(padraoCinza, &kpPadrao, &kPadrao);///Caso usar o filtro de Sobel, usar 'padraoSobel';
 
-	/// Calculo de pontos chave
-	imgPontosChaves(modeloCinza, &kpModelo, &kModelo);///Caso usar o filtro de Sobel, usar 'modeloSobel';
-	imgPontosChaves(padraoCinza, &kpPadrao, &kPadrao);///Caso usar o filtro de Sobel, usar 'padraoSobel';
+			/// Extracao de features
+			imgExtracao(modelo, kpModelo, &exModelo);
+			imgExtracao(padrao, kpPadrao, &exPadrao);
 
-	/// Extracao de features
-	imgExtracao(modelo, kpModelo, &exModelo);
-	imgExtracao(padrao, kpPadrao, &exPadrao);
+			//usa metodo de casamento através de força bruta
+			//casamentoAForca(exModelo, exPadrao, &pontosCasados);
 
-	//usa metodo de casamento através de força bruta
-	//casamentoAForca(exModelo, exPadrao, &pontosCasados);
+			//usa metodo de casamento com FLANN
+			casamentoFLANN(exModelo, exPadrao, &pontosCasados);
 
-	//usa metodo de casamento com FLANN
-	casamentoFLANN(exModelo, exPadrao, &pontosCasados);
+			Mat img_matches;
 
-	drawMatches(modelo, kpModelo, padrao, kpPadrao, pontosCasados, kCasada);
+			drawMatches(modelo, kpModelo, padrao, kpPadrao, pontosCasados, img_matches,
+				Scalar::all(-1), Scalar::all(-1),
+				vector<char>(), DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS);
 
-	imshow("PG - CIn/UFPE 2014.2", kCasada);
+			//-- Localize the object
+			std::vector<Point2f> obj;
+			std::vector<Point2f> scene;
 
-	imwrite("match.jpg", kCasada);
-	imwrite("kModelo.jpg", kModelo);
-	imwrite("kPadrao.jpg", kPadrao);
-	printf("\n\t# de Frames: %d", fcount);
+			for (int i = 0; i < pontosCasados.size(); i++)
+			{
+				//-- Get the keypoints from the good matches
+				obj.push_back(kpModelo[pontosCasados[i].queryIdx].pt);
+				scene.push_back(kpPadrao[pontosCasados[i].trainIdx].pt);
+			}
+
+			Mat H = findHomography(obj, scene, RANSAC);
+
+			//achar as quinas do modelo
+			std::vector<Point2f> modeloCorners(4);
+			modeloCorners[0] = cvPoint(0, 0);
+			modeloCorners[1] = cvPoint(modelo.cols, 0);
+			modeloCorners[2] = cvPoint(modelo.cols, modelo.rows);
+			modeloCorners[3] = cvPoint(0, modelo.rows);
+
+			std::vector<Point2f> padraoCorners(4);
+
+			perspectiveTransform(modeloCorners, padraoCorners, H);
+
+			//-- Draw lines between the corners (the mapped object in the scene - image_2 )
+			line(img_matches, padraoCorners[0] + Point2f(modelo.cols, 0), padraoCorners[1] + Point2f(modelo.cols, 0), Scalar(0, 255, 0), 4);
+			line(img_matches, padraoCorners[1] + Point2f(modelo.cols, 0), padraoCorners[2] + Point2f(modelo.cols, 0), Scalar(0, 255, 0), 4);
+			line(img_matches, padraoCorners[2] + Point2f(modelo.cols, 0), padraoCorners[3] + Point2f(modelo.cols, 0), Scalar(0, 255, 0), 4);
+			line(img_matches, padraoCorners[3] + Point2f(modelo.cols, 0), padraoCorners[0] + Point2f(modelo.cols, 0), Scalar(0, 255, 0), 4);
+
+
+			imshow("PG - CIn/UFPE 2014.2", img_matches);
+
+			//imwrite("match.jpg", kCasada);
+			//imwrite("kModelo.jpg", kModelo);
+			//imwrite("kPadrao.jpg", kPadrao);
+			printf("\n\t# de Frames: %d", fcount);
+			waitKey(1);
+		}
 }
 
 int main(int argc, char **argv)
