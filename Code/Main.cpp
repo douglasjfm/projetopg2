@@ -11,10 +11,8 @@
 #include "opencv2/imgproc/imgproc.hpp"
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/features2d/features2d.hpp"
-#include "opencv2/features2d/features2d.hpp"
 #include "opencv2/nonfree/features2d.hpp"
 #include "opencv2/calib3d/calib3d.hpp"
-
 #include <iostream>
 #include <ctype.h>
 
@@ -471,10 +469,40 @@ Mat cinzasSobel(Mat src_gray, Mat grad)
 	return grad;
 }
 
-void casar(Mat desc1, Mat desc2, vector<DMatch> *m)
+void casamentoAForca(Mat desc1, Mat desc2, vector<DMatch> *m)
 {
 	BFMatcher matcher(NORM_L2);
 	matcher.match(desc1, desc2, *m);
+}
+void casamentoFLANN(Mat desc1, Mat desc2, vector<DMatch> *m)
+{
+	FlannBasedMatcher matcher;
+	std::vector< DMatch > matches;
+	matcher.match(desc1, desc2, matches);
+
+	double distMax = 0; double distMin = 100;
+
+	for (int i = 0; i < desc1.rows; i++)
+	{
+		double dist = matches[i].distance;
+		if (dist < distMin) distMin = dist;
+		if (dist > distMax) distMax = dist;
+	}
+
+	printf("-- Max dist : %f \n", distMax);
+	printf("-- Min dist : %f \n", distMin);
+
+	//desenhar good matches
+	std::vector< DMatch > good_matches;
+
+	for (int i = 0; i < desc1.rows; i++)
+	{
+		if (matches[i].distance <= max(2 * distMin, 0.02))
+		{
+			good_matches.push_back(matches[i]);
+		}
+	}
+	*m = good_matches;
 }
 
 void CVergonhice(){
@@ -510,7 +538,11 @@ void CVergonhice(){
 	imgExtracao(modelo, kpModelo, &exModelo);
 	imgExtracao(padrao, kpPadrao, &exPadrao);
 
-	casar(exModelo, exPadrao, &pontosCasados);
+	//usa metodo de casamento através de força bruta
+	//casamentoAForca(exModelo, exPadrao, &pontosCasados);
+
+	//usa metodo de casamento com FLANN
+	casamentoFLANN(exModelo, exPadrao, &pontosCasados);
 
 	drawMatches(modelo, kpModelo, padrao, kpPadrao, pontosCasados, kCasada);
 
@@ -520,7 +552,6 @@ void CVergonhice(){
 	imwrite("kModelo.jpg", kModelo);
 	imwrite("kPadrao.jpg", kPadrao);
 	printf("\n\t# de Frames: %d", fcount);
-
 }
 
 int main(int argc, char **argv)
