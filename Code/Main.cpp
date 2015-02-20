@@ -30,8 +30,8 @@ const double rotateCameraConst = 0.03;
 const double rotateCameraMouseConst = 0.003;
 const int FRAME_WIDTH = 320;
 const int FRAME_HEIGHT = 240;
-const String video = "Resources\\InputData\\video3.mp4";
-//const int video = 0;
+//const String video = "Resources\\InputData\\video3.mp4";
+const int video = 0;
 const String foto = "Resources\\InputData\\livro4.jpg";
 
 bool buffer[250];
@@ -72,7 +72,7 @@ void initCV()
 		exit(1);
 	}
 
-	namedWindow("video", WINDOW_AUTOSIZE);
+	//namedWindow("video", WINDOW_AUTOSIZE);
 }
 
 void initialize()
@@ -317,7 +317,7 @@ void updateCV()
 	{
 		cap.set(CV_CAP_PROP_POS_FRAMES, 10);
 	}
-	imshow("video", frame);
+	//imshow("video", frame);
 }
 
 // aqui o sistema de coordenadas da tela está variando de -1 a 1 no eixo x e y
@@ -477,31 +477,27 @@ void casamentoForcaBruta(Mat desc1, Mat desc2, vector<DMatch> *m)
 	BFMatcher matcher(NORM_L2);
 	matcher.match(desc1, desc2, *m);
 }
-void casamentoFLANN(Mat desc1, Mat desc2, vector<DMatch> *m)
-{
+void casamentoFLANN(Mat desc1, Mat desc2, vector<DMatch> *m){
 	FlannBasedMatcher matcher;
 	std::vector< DMatch > matches;
 	matcher.match(desc1, desc2, matches);
 
 	double distMax = 0; double distMin = 100;
 
-	for (int i = 0; i < desc1.rows; i++)
-	{
+	for (int i = 0; i < desc1.rows; i++){
 		double dist = matches[i].distance;
 		if (dist < distMin) distMin = dist;
 		if (dist > distMax) distMax = dist;
 	}
 
-	printf("-- Max dist : %f \n", distMax);
-	printf("-- Min dist : %f \n", distMin);
+	//printf("-- Max dist : %f \n", distMax);
+	//printf("-- Min dist : %f \n", distMin);
 
 	//retornar good matches
 	std::vector< DMatch > good_matches;
 
-	for (int i = 0; i < desc1.rows; i++)
-	{
-		if (matches[i].distance <= max(3 * distMin, 0.02))
-		{
+	for (int i = 0; i < desc1.rows; i++){
+		if (matches[i].distance <= max(3 * distMin, 0.02)){
 			good_matches.push_back(matches[i]);
 		}
 	}
@@ -557,8 +553,7 @@ void CVergonhice(){
 		std::vector<Point2f> obj;
 		std::vector<Point2f> scene;
 
-		for (int i = 0; i < pontosCasados.size(); i++)
-		{
+		for (int i = 0; i < pontosCasados.size(); i++){
 			//-- Get the keypoints from the good matches
 			obj.push_back(kpModelo[pontosCasados[i].queryIdx].pt);
 			scene.push_back(kpPadrao[pontosCasados[i].trainIdx].pt);
@@ -587,8 +582,8 @@ void CVergonhice(){
 		//imwrite("match.jpg", kCasada);
 		//imwrite("kModelo.jpg", kModelo);
 		//imwrite("kPadrao.jpg", kPadrao);
-		printf("\n\t# de Frames: %d", fcount);
-		waitKey(30);
+		//printf("\n\t# de Frames: %d", fcount);
+		waitKey(5);
 	}
 }
 
