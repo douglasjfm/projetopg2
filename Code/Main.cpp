@@ -28,8 +28,11 @@ GLfloat mouse_x, mouse_y;
 const double translateCameraConst = .1;
 const double rotateCameraConst = 0.03;
 const double rotateCameraMouseConst = 0.003;
-const int FRAME_WIDTH = 640;
-const int FRAME_HEIGHT = 480;
+const int FRAME_WIDTH = 320;
+const int FRAME_HEIGHT = 240;
+const String video = "Resources\\InputData\\video3.mp4";
+//const int video = 0;
+const String foto = "Resources\\InputData\\livro4.jpg";
 
 bool buffer[250];
 
@@ -60,10 +63,7 @@ Mat frame;
 
 void initCV()
 {
-	cap.open("Resources\\InputData\\video2.mp4");
-
-	cap.set(CV_CAP_PROP_FRAME_WIDTH, FRAME_WIDTH);
-	cap.set(CV_CAP_PROP_FRAME_HEIGHT, FRAME_HEIGHT);
+	cap.open(video);
 
 	if (!cap.isOpened())
 	{
@@ -518,8 +518,7 @@ void CVergonhice(){
 	vector<DMatch> pontosCasados;
 
 	while (1){
-		modelo = imread("Resources\\InputData\\livro4.jpg");
-		//modelo = imread("Resources\\InputData\\livro.jpg");
+		modelo = imread(foto);
 		cap.read(padrao);
 			
 		/// Filtro gaussiano
